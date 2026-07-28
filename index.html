@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Integrado de Gestión IDD - PDR V2 (Con Ficha de Proyecto & Reportes)</title>
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Librerías de Exportación PDF y Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header Gerencial -->
+    <header class="header-bar">
+      <div class="brand-title">
+        <div class="brand-logo">IDD</div>
+        <div class="brand-info">
+          <h1>Sistema Integrado de Gestión IDD</h1>
+          <p>Bitácoras, Capacidad (Time-Tracking) e Indicadores Key Performance (PDR V2 - Ficha & Reportes PDF/Excel)</p>
+        </div>
+      </div>
+      <div>
+        <button class="btn-secondary" onclick="DB.reset(); location.reload();">🔄 Resetear Datos de Prueba</button>
+      </div>
+    </header>
+
+    <!-- Barra de Filtros Rápidos e Interactivos (PDR 7) -->
+    <section class="quick-filters-bar">
+      <div class="filter-group">
+        <label for="filter-investigador">Investigador / Rol:</label>
+        <select id="filter-investigador" class="filter-select" onchange="App.applyFilters()"></select>
+      </div>
+
+      <div class="filter-group">
+        <label for="filter-marca">Línea / Marca:</label>
+        <select id="filter-marca" class="filter-select" onchange="App.applyFilters()"></select>
+      </div>
+
+      <div class="filter-group">
+        <label for="filter-cc">Centro de Costos:</label>
+        <select id="filter-cc" class="filter-select" onchange="App.applyFilters()">
+          <option value="">-- Todos los CC --</option>
+          <option value="551">551 (Aplicaciones)</option>
+          <option value="561">561 (Desarrollos)</option>
+          <option value="571">571 (Investigación)</option>
+          <option value="584">584 (Proyecto Orquídeas)</option>
+          <option value="591">591 (Nutrición Avanzada)</option>
+          <option value="144">144 (Homologación)</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="filter-fecha-inicio">Desde:</label>
+        <input type="date" id="filter-fecha-inicio" class="filter-input" onchange="App.applyFilters()">
+      </div>
+
+      <div class="filter-group">
+        <label for="filter-fecha-fin">Hasta:</label>
+        <input type="date" id="filter-fecha-fin" class="filter-input" onchange="App.applyFilters()">
+      </div>
+    </section>
+
+    <!-- Tarjetas Resumen Gerenciales (KPI Cards) (PDR 5 & 7) -->
+    <section class="kpi-cards-grid">
+      <div class="kpi-card">
+        <div class="kpi-title">Cumplimiento OTD Proyectos</div>
+        <div class="kpi-value" id="kpi-otd-val">0%</div>
+        <div class="kpi-subtext" id="kpi-otd-sub">Entregas a tiempo / Evaluados</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-title">Proyectos Activos</div>
+        <div class="kpi-value" id="kpi-activos-val">0</div>
+        <div class="kpi-subtext">En funnel de desarrollo</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-title">Desviación Promedio Tiempos</div>
+        <div class="kpi-value" id="kpi-desviacion-val">0 días</div>
+        <div class="kpi-subtext" id="kpi-desviacion-sub">% Desviación estimado vs real</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-title">% Incremento Eficiencia</div>
+        <div class="kpi-value" id="kpi-eficiencia-val">0%</div>
+        <div class="kpi-subtext">Promedio en procesos optimizados</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-title">Horas Capacitación Técnica</div>
+        <div class="kpi-value" id="kpi-capacitacion-val">0 hrs</div>
+        <div class="kpi-subtext">Dictadas y recibidas acumuladas</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-title">Soporte Técnico Comercial</div>
+        <div class="kpi-value" id="kpi-soporte-val">0 hrs</div>
+        <div class="kpi-subtext">Asistencias a comercial en el período</div>
+      </div>
+    </section>
+
+    <!-- Menú de Navegación Directa a los Módulos Gerenciales -->
+    <nav class="modules-nav-container">
+      <div class="nav-module-card active" onclick="App.switchModule('mod-proyectos', this)">
+        <div class="nav-module-icon">🚀</div>
+        <div class="nav-module-text">
+          <h3>1. IDD / Proyectos</h3>
+          <p>Funnel, Cierre & Ventas</p>
+        </div>
+      </div>
+
+      <div class="nav-module-card" onclick="App.switchModule('mod-aplicaciones', this)">
+        <div class="nav-module-icon">🧪</div>
+        <div class="nav-module-text">
+          <h3>2. Aplicaciones</h3>
+          <p>Solicitudes & Eval. Cliente</p>
+        </div>
+      </div>
+
+      <div class="nav-module-card" onclick="App.switchModule('mod-asistencia', this)">
+        <div class="nav-module-icon">🎧</div>
+        <div class="nav-module-text">
+          <h3>3. Asistencia Técnica</h3>
+          <p>Soporte Comercial & Tiempos</p>
+        </div>
+      </div>
+
+      <div class="nav-module-card" onclick="App.switchModule('mod-capacidad', this)">
+        <div class="nav-module-icon">⏱️</div>
+        <div class="nav-module-text">
+          <h3>4. Capacidad Proceso</h3>
+          <p>Time-Tracking Hora a Hora</p>
+        </div>
+      </div>
+
+      <div class="nav-module-card" onclick="App.switchModule('mod-capacitaciones', this)">
+        <div class="nav-module-icon">📚</div>
+        <div class="nav-module-text">
+          <h3>5. Capacitaciones</h3>
+          <p>Formación Técnica por Rol</p>
+        </div>
+      </div>
+
+      <div class="nav-module-card" onclick="App.switchModule('mod-homologaciones', this)">
+        <div class="nav-module-icon">📊</div>
+        <div class="nav-module-text">
+          <h3>6. Homologación & Presupuesto</h3>
+          <p>Eficiencias & Centros Costo</p>
+        </div>
+      </div>
+
+      <div class="nav-module-card" onclick="App.switchModule('mod-catalogos', this)">
+        <div class="nav-module-icon">⚙️</div>
+        <div class="nav-module-text">
+          <h3>7. Catálogos System</h3>
+          <p>Investigadores, Roles & Líneas</p>
+        </div>
+      </div>
+
+      <div class="nav-module-card" onclick="App.switchModule('mod-db-schema', this)">
+        <div class="nav-module-icon">🗄️</div>
+        <div class="nav-module-text">
+          <h3>Arquitectura DB</h3>
+          <p>Esquema SQL Relacional</p>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Panel de Contenido Principal del Módulo -->
+    <main class="module-content-panel">
+      <!-- Módulo 1: Proyectos -->
+      <section id="mod-proyectos" class="module-section">
+        <div class="panel-header">
+          <h2>Módulo 1: IDD / Proyectos (Funnel, Etapas & Cierre Comercial)</h2>
+          <div class="action-buttons">
+            <button class="btn-secondary" onclick="ReportEngine.exportProyectosExcel()">📊 Exportar Excel</button>
+            <button class="btn-secondary" onclick="ReportEngine.exportProyectosPDF()">📄 Exportar PDF</button>
+            <button class="btn-primary" onclick="App.openModalProyecto()">+ Crear Proyecto</button>
+          </div>
+        </div>
+
+        <div class="funnel-overview" id="funnel-container"></div>
+
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Semáforo</th>
+                <th>Código</th>
+                <th>Proyecto</th>
+                <th>Categoría</th>
+                <th>Línea / Marca</th>
+                <th>Centro Costo</th>
+                <th>Etapa Actual</th>
+                <th>Fecha Compromiso</th>
+                <th>Acciones (CRUD)</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-proyectos-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Módulo 2: Aplicaciones -->
+      <section id="mod-aplicaciones" class="module-section" style="display: none;">
+        <div class="panel-header">
+          <h2>Módulo 2: Aplicaciones Vinculadas</h2>
+          <div class="action-buttons">
+            <button class="btn-secondary" onclick="ReportEngine.exportAplicacionesExcel()">📊 Exportar Excel</button>
+            <button class="btn-secondary" onclick="ReportEngine.exportAplicacionesPDF()">📄 Exportar PDF</button>
+            <button class="btn-primary" onclick="App.openModalAplicacion()">+ Crear Aplicación</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Semáforo</th>
+                <th>Código</th>
+                <th>Proyecto Vinculado</th>
+                <th>Nombre Solicitud</th>
+                <th>Cliente</th>
+                <th>Fecha Compromiso</th>
+                <th>Fecha Entrega Real</th>
+                <th>Estado</th>
+                <th>Acciones (CRUD)</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-aplicaciones-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Módulo 3: Asistencia Técnica -->
+      <section id="mod-asistencia" class="module-section" style="display: none;">
+        <div class="panel-header">
+          <h2>Módulo 3: Asistencia Técnica al Área Comercial</h2>
+          <div class="action-buttons">
+            <button class="btn-secondary" onclick="ReportEngine.exportAsistenciaExcel()">📊 Exportar Excel</button>
+            <button class="btn-secondary" onclick="ReportEngine.exportAsistenciaPDF()">📄 Exportar PDF</button>
+            <button class="btn-primary" onclick="App.openModalAsistencia()">+ Crear Asistencia Técnica</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Semáforo</th>
+                <th>Código</th>
+                <th>Proyecto Núcleo</th>
+                <th>Comercial Solicitante</th>
+                <th>Investigador Asignado</th>
+                <th>Descripción</th>
+                <th>Horas Invertidas</th>
+                <th>Fecha Compromiso</th>
+                <th>Estado</th>
+                <th>Acciones (CRUD)</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-asistencia-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Módulo 4: Capacidad del Proceso (Time-Tracking Diario) -->
+      <section id="mod-capacidad" class="module-section" style="display: none;">
+        <div class="panel-header">
+          <h2>Módulo 4: Capacidad del Proceso (Time-Tracking Hora a Hora)</h2>
+          <div class="action-buttons">
+            <button class="btn-secondary" onclick="ReportEngine.exportTimeTrackingExcel()">📊 Exportar Excel</button>
+            <button class="btn-secondary" onclick="ReportEngine.exportTimeTrackingPDF()">📄 Exportar PDF</button>
+            <button class="btn-primary" onclick="App.openModalTimeTracking()">+ Crear Registro Time-Tracking</button>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+          <div style="background: rgba(15,23,42,0.6); padding: 18px; border-radius: 12px; border: 1px solid var(--border-color);">
+            <h4 style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">Distribución Porcentual por Categoría (5 Categorías PDR 4.1)</h4>
+            <div id="chart-categorias-container"></div>
+          </div>
+          <div style="background: rgba(15,23,42,0.6); padding: 18px; border-radius: 12px; border: 1px solid var(--border-color);">
+            <h4 style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">Horas Totales Utilizadas por Rol de Investigador</h4>
+            <div id="chart-roles-container"></div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Investigador / Rol</th>
+                <th>Horario</th>
+                <th>Horas</th>
+                <th>Categoría PDR</th>
+                <th>Subcategoría</th>
+                <th>Descripción Actividad</th>
+                <th>Acciones (CRUD)</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-timetracking-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Módulo 5: Capacitaciones -->
+      <section id="mod-capacitaciones" class="module-section" style="display: none;">
+        <div class="panel-header">
+          <h2>Módulo 5: Consolidados de Capacitación Técnica (Recibida y Dictada)</h2>
+          <div class="action-buttons">
+            <button class="btn-secondary" onclick="ReportEngine.exportCapacitacionesExcel()">📊 Exportar Excel</button>
+            <button class="btn-secondary" onclick="ReportEngine.exportCapacitacionesPDF()">📄 Exportar PDF</button>
+            <button class="btn-primary" onclick="App.openModalCapacitacion()">+ Crear Capacitación</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Investigador</th>
+                <th>Rol</th>
+                <th>Tipo</th>
+                <th>Tema de Formación Técnica</th>
+                <th>Fecha</th>
+                <th>Horas Acumuladas</th>
+                <th>Acciones (CRUD)</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-capacitaciones-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Módulo 6: Homologaciones, Eficiencias y Presupuesto -->
+      <section id="mod-homologaciones" class="module-section" style="display: none;">
+        <div class="panel-header">
+          <h2>Módulo 6: Homologaciones, Eficiencias y Ejecución Presupuestal</h2>
+          <div class="action-buttons">
+            <button class="btn-secondary" onclick="ReportEngine.exportHomologacionesEficienciasExcel()">📊 Exportar Excel</button>
+            <button class="btn-secondary" onclick="ReportEngine.exportHomologacionesEficienciasPDF()">📄 Exportar PDF</button>
+            <button class="btn-secondary" onclick="App.openModalHomologacion()">+ Homologación</button>
+            <button class="btn-secondary" onclick="App.openModalEficiencia()">+ Eficiencia</button>
+            <button class="btn-primary" onclick="App.openModalPresupuesto()">+ Presupuesto CC</button>
+          </div>
+        </div>
+
+        <h3 style="font-size: 15px; margin-bottom: 12px; color: #93c5fd;">1. Ejecución Presupuestal por Centro de Costos</h3>
+        <div class="table-responsive" style="margin-bottom: 28px;">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Centro de Costo</th>
+                <th>Presupuesto Asignado</th>
+                <th>Gasto Real Ejecutado</th>
+                <th>% Ejecución Presupuestal</th>
+                <th>Acciones (CRUD)</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-presupuesto-body"></tbody>
+          </table>
+        </div>
+
+        <h3 style="font-size: 15px; margin-bottom: 12px; color: #93c5fd;">2. Proyectos de Optimización / Eficiencias Alcanzadas</h3>
+        <div class="table-responsive" style="margin-bottom: 28px;">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Semáforo</th>
+                <th>Código</th>
+                <th>Optimización</th>
+                <th>Centro Costo</th>
+                <th>Valor Actual</th>
+                <th>Valor Nuevo</th>
+                <th>% Incremento Eficiencia</th>
+                <th>Acciones (CRUD)</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-eficiencias-body"></tbody>
+          </table>
+        </div>
+
+        <h3 style="font-size: 15px; margin-bottom: 12px; color: #93c5fd;">3. Homologación de Materias Primas</h3>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Semáforo</th>
+                <th>Código</th>
+                <th>Materia Prima</th>
+                <th>Proveedor</th>
+                <th>CC</th>
+                <th>Fecha Compromiso</th>
+                <th>Estado Prueba</th>
+                <th>Acciones (CRUD)</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-homologaciones-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Módulo 7: Catálogos -->
+      <section id="mod-catalogos" class="module-section" style="display: none;">
+        <div class="panel-header">
+          <h2>Módulo 7: Catálogos del Sistema (Gestión CRUD de Investigadores & Líneas)</h2>
+          <div class="action-buttons">
+            <button class="btn-secondary" onclick="ReportEngine.exportCatalogosExcel()">📊 Exportar Excel</button>
+            <button class="btn-secondary" onclick="ReportEngine.exportCatalogosPDF()">📄 Exportar PDF</button>
+            <button class="btn-secondary" onclick="App.openModalUsuario()">+ Agregar Investigador / Usuario</button>
+            <button class="btn-primary" onclick="App.openModalLinea()">+ Agregar Línea / Marca</button>
+          </div>
+        </div>
+
+        <h3 style="font-size: 15px; margin-bottom: 12px; color: #93c5fd;">1. Gestión de Investigadores, Equipo IDD y Roles</h3>
+        <div class="table-responsive" style="margin-bottom: 28px;">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nombre Completo</th>
+                <th>Correo Electrónico</th>
+                <th>Rol Asignado</th>
+                <th>Acciones (CRUD)</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-usuarios-body"></tbody>
+          </table>
+        </div>
+
+        <h3 style="font-size: 15px; margin-bottom: 12px; color: #93c5fd;">2. Gestión de Líneas / Marcas</h3>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nombre de la Línea / Marca</th>
+                <th>Acciones (CRUD)</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-lineas-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Pestaña Arquitectura DB SQL -->
+      <section id="mod-db-schema" class="module-section" style="display: none;">
+        <div class="panel-header">
+          <h2>Arquitectura de Datos y Esquema SQL Relacional</h2>
+          <button class="btn-primary" onclick="App.downloadSQLSchema()">⬇️ Descargar schema.sql</button>
+        </div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          Diseño del esquema de base de datos relacional para soportar las bitácoras hijas vinculadas a la Bitácora de Proyectos (entidad núcleo 1:N), auditoría de fechas y time-tracking hora a hora.
+        </p>
+        <pre class="sql-code-block" id="sql-schema-display"></pre>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL: DETALLE COMPLETO DE PROYECTO (FICHA & INFORME INDIVIDUAL) -->
+  <div class="modal-overlay" id="modal-detalle-proyecto">
+    <div class="modal-box" style="max-width: 800px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="dp-codigo-title" style="font-size: 20px; color: var(--primary);">[PRJ-2026-000] Nombre del Proyecto</h3>
+          <p id="dp-cliente-sub" style="font-size: 12px; color: var(--text-muted);">Cliente: Solicitante</p>
+        </div>
+        <!-- Botón X con cierre explícito -->
+        <button class="close-btn" style="font-size: 28px; cursor: pointer; color: #f87171;" onclick="App.closeModal('modal-detalle-proyecto')" title="Cerrar Ficha de Proyecto">&times;</button>
+      </div>
+
+      <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-color);">
+        <div id="dp-semaforo-badge"></div>
+        <div class="action-buttons">
+          <button class="btn-secondary" id="btn-dp-export-excel">📊 Exportar Ficha Excel</button>
+          <button class="btn-primary" id="btn-dp-export-pdf">📄 Exportar Ficha PDF</button>
+        </div>
+      </div>
+
+      <!-- Grid de Atributos Principales -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; font-size: 13px;">
+        <div style="background: rgba(15,23,42,0.6); padding: 14px; border-radius: 10px; border: 1px solid var(--border-color);">
+          <h4 style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Clasificación del Proyecto</h4>
+          <p><strong>Categoría:</strong> <span id="dp-categoria"></span></p>
+          <p><strong>Línea / Marca:</strong> <span id="dp-marca"></span></p>
+          <p><strong>Modelo Negocio:</strong> <span id="dp-modelo"></span></p>
+          <p><strong>Tecnología:</strong> <span id="dp-tecnologia"></span></p>
+          <p><strong>Centro Costos:</strong> <span id="dp-cc"></span></p>
+        </div>
+
+        <div style="background: rgba(15,23,42,0.6); padding: 14px; border-radius: 10px; border: 1px solid var(--border-color);">
+          <h4 style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Gestión y Tiempos</h4>
+          <p><strong>Etapa Funnel:</strong> <span id="dp-etapa"></span></p>
+          <p><strong>Investigador Líder:</strong> <span id="dp-investigador"></span></p>
+          <p><strong>Días Estimados:</strong> <span id="dp-dias-est"></span></p>
+          <p><strong>Días Reales:</strong> <span id="dp-dias-reales"></span></p>
+          <p><strong>Desviación Tiempos:</strong> <span id="dp-desviacion"></span></p>
+        </div>
+      </div>
+
+      <!-- Trazabilidad de las 6 Fechas Estándar (PDR 3.1) -->
+      <div style="background: rgba(15,23,42,0.6); padding: 14px; border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+        <h4 style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;">Línea de Tiempo de las 6 Fechas Estándar (PDR 3.1)</h4>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 12px;">
+          <div>📅 <strong>Solicitud:</strong> <span id="dp-f-solicitud"></span></div>
+          <div>📅 <strong>Real Inicio:</strong> <span id="dp-f-inicio"></span></div>
+          <div>📅 <strong>Reasignación:</strong> <span id="dp-f-reasignacion"></span></div>
+          <div>📅 <strong>Compromiso:</strong> <span id="dp-f-compromiso" style="color:var(--traffic-yellow); font-weight:bold;"></span></div>
+          <div>📅 <strong>Real Entrega:</strong> <span id="dp-f-entrega"></span></div>
+          <div>📅 <strong>Cierre Proyecto:</strong> <span id="dp-f-cierre"></span></div>
+        </div>
+      </div>
+
+      <!-- Aplicaciones Vinculadas -->
+      <h4 style="font-size: 13px; color: #93c5fd; margin-bottom: 8px;">Aplicaciones Vinculadas (1:N)</h4>
+      <div class="table-responsive" style="margin-bottom: 20px;">
+        <table class="custom-table" style="font-size: 12px;">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Solicitud</th>
+              <th>Cliente</th>
+              <th>Fecha Compromiso</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-dp-aplicaciones"></tbody>
+        </table>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="App.closeModal('modal-detalle-proyecto')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALES DE EDICIÓN Y CREACIÓN -->
+  <!-- MODAL: USUARIO / INVESTIGADOR -->
+  <div class="modal-overlay" id="modal-usuario">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-usuario-title">Crear / Editar Investigador / Rol</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-usuario')">&times;</button>
+      </div>
+      <form onsubmit="App.saveUsuarioForm(event)">
+        <input type="hidden" id="u-id">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label>Nombre Completo *</label>
+            <input type="text" id="u-nombre" class="form-control" required placeholder="Ej: Ing. Andrés Jaramillo">
+          </div>
+          <div class="form-group full-width">
+            <label>Correo Electrónico *</label>
+            <input type="email" id="u-email" class="form-control" required placeholder="ajaramillo@alsec.com">
+          </div>
+          <div class="form-group full-width">
+            <label>Rol Asignado *</label>
+            <select id="u-rol" class="form-control" required>
+              <option value="Director IDD">Director IDD</option>
+              <option value="Líder IDD">Líder IDD</option>
+              <option value="Líder Técnica">Líder Técnica</option>
+              <option value="Asistente IDD">Asistente IDD</option>
+              <option value="Proceso Comercial / Asesor">Proceso Comercial / Asesor</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="App.closeModal('modal-usuario')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Investigador</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: LÍNEA / MARCA -->
+  <div class="modal-overlay" id="modal-linea">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-linea-title">Crear / Editar Línea o Marca</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-linea')">&times;</button>
+      </div>
+      <form onsubmit="App.saveLineaForm(event)">
+        <input type="hidden" id="l-old-name">
+        <div class="form-group full-width">
+          <label>Nombre de la Línea / Marca *</label>
+          <input type="text" id="l-nombre" class="form-control" required placeholder="Ej: Nutricure Advanced">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="App.closeModal('modal-linea')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Línea</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: PROYECTO -->
+  <div class="modal-overlay" id="modal-proyecto">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-proyecto-title">Registrar / Editar Proyecto IDD</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-proyecto')">&times;</button>
+      </div>
+      <form onsubmit="App.saveProyectoForm(event)">
+        <input type="hidden" id="p-id">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label>Nombre del Proyecto *</label>
+            <input type="text" id="p-nombre" class="form-control" required placeholder="Ej: Emulsión Probiótica Zeto">
+          </div>
+          <div class="form-group">
+            <label>Categoría *</label>
+            <select id="p-categoria" class="form-control" required>
+              <option value="Desarrollo">Desarrollo</option>
+              <option value="Investigación">Investigación</option>
+              <option value="Moonshot">Moonshot</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Marca / Línea *</label>
+            <select id="p-marca" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label>Modelo de Negocio *</label>
+            <select id="p-modelo" class="form-control" required>
+              <option value="Alsec Revolution (Innovación Disruptiva)">Alsec Revolution (Innovación Disruptiva)</option>
+              <option value="Aplicación / Soporte Técnico">Aplicación / Soporte Técnico</option>
+              <option value="Comercialización">Comercialización</option>
+              <option value="Crisol-Ingrediente a la Medida">Crisol-Ingrediente a la Medida</option>
+              <option value="Productos B2C - Líquido">Productos B2C - Líquido</option>
+              <option value="Productos B2C - Polvo">Productos B2C - Polvo</option>
+              <option value="Soluciones B2B_Internacional-Líquido">Soluciones B2B_Internacional-Líquido</option>
+              <option value="Soluciones B2B_Internacional-Polvo">Soluciones B2B_Internacional-Polvo</option>
+              <option value="Soluciones B2B_Nacional-Líquido">Soluciones B2B_Nacional-Líquido</option>
+              <option value="Soluciones B2B_Nacional-Polvo">Soluciones B2B_Nacional-Polvo</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tecnología *</label>
+            <select id="p-tecnologia" class="form-control" required>
+              <option value="Secado por Aspersión y Microencapsulación">Secado por Aspersión y Microencapsulación</option>
+              <option value="Separación por Membranas">Separación por Membranas</option>
+              <option value="Tratamiento Térmico UHT">Tratamiento Térmico UHT</option>
+              <option value="Procesamiento Retortable (Esterilización)">Procesamiento Retortable (Esterilización)</option>
+              <option value="Mezclado (Dry Blend / Blending)">Mezclado (Dry Blend / Blending)</option>
+              <option value="Biotecnología">Biotecnología</option>
+              <option value="Hidrólisis Enzimática">Hidrólisis Enzimática</option>
+              <option value="Extracción / Concentración">Extracción / Concentración</option>
+              <option value="Multitecnología / Combinado">Multitecnología / Combinado</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Centro de Costo *</label>
+            <select id="p-cc" class="form-control" required>
+              <option value="551">551 (Aplicaciones)</option>
+              <option value="561">561 (Desarrollos)</option>
+              <option value="571">571 (Investigación)</option>
+              <option value="584">584 (Proyecto Orquídeas)</option>
+              <option value="591">591 (Nutrición Avanzada)</option>
+              <option value="144">144 (Homologación)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Etapa Actual Funnel *</label>
+            <select id="p-etapa" class="form-control" required>
+              <option value="Por Definir / Briefing">Por Definir / Briefing</option>
+              <option value="En Desarrollo (Laboratorio)">En Desarrollo (Laboratorio)</option>
+              <option value="En Documentación">En Documentación</option>
+              <option value="En Evaluación / Enviado a Cliente">En Evaluación / Enviado a Cliente</option>
+              <option value="Re-formulación">Re-formulación</option>
+              <option value="Prueba Piloto / Escalamiento">Prueba Piloto / Escalamiento</option>
+              <option value="Stand By / En Espera">Stand By / En Espera</option>
+              <option value="Estudio de Estabilidad / Vida Útil">Estudio de Estabilidad / Vida Útil</option>
+              <option value="Éxito / Aprobado">Éxito / Aprobado</option>
+              <option value="Cancelado / Descartado">Cancelado / Descartado</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Investigador Líder *</label>
+            <select id="p-investigador" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label>Fecha Compromiso *</label>
+            <input type="date" id="p-fecha-compromiso" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="App.closeModal('modal-proyecto')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Proyecto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: AUDITORÍA DE FECHA COMPROMISO -->
+  <div class="modal-overlay" id="modal-auditoria-fecha">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Reasignar Fecha Compromiso (Auditoría PDR)</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-auditoria-fecha')">&times;</button>
+      </div>
+      <form onsubmit="App.saveAuditoriaFecha(event)">
+        <input type="hidden" id="af-proyecto-id">
+        <p style="font-size: 13px; color: var(--traffic-yellow); margin-bottom: 16px;">
+          ⚠️ <strong>Regla de Auditoría PDR 3.1:</strong> La Fecha Compromiso no se borra ni sobreescribe sin justificativo obligatorio.
+        </p>
+        <div class="form-group full-width" style="margin-bottom: 12px;">
+          <label>Nueva Fecha Compromiso de Entrega *</label>
+          <input type="date" id="af-nueva-fecha" class="form-control" required>
+        </div>
+        <div class="form-group full-width">
+          <label>Nota / Observación Obligatoria de Justificación *</label>
+          <textarea id="af-justificacion" class="form-control" rows="3" required placeholder="Motivo de la pausa, reformulación o reasignación..."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="App.closeModal('modal-auditoria-fecha')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Cambio y Auditar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: APLICACIÓN -->
+  <div class="modal-overlay" id="modal-aplicacion">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-aplicacion-title">Crear / Editar Aplicación</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-aplicacion')">&times;</button>
+      </div>
+      <form onsubmit="App.saveAplicacionForm(event)">
+        <input type="hidden" id="app-id">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label>Proyecto Vinculado (1:N) *</label>
+            <select id="app-proyecto-id" class="form-control" required></select>
+          </div>
+          <div class="form-group full-width">
+            <label>Nombre Solicitud de Aplicación *</label>
+            <input type="text" id="app-nombre" class="form-control" required placeholder="Ej: Pruebas de Solubilidad en Frío">
+          </div>
+          <div class="form-group">
+            <label>Cliente *</label>
+            <input type="text" id="app-cliente" class="form-control" required placeholder="Ej: NutriSalud">
+          </div>
+          <div class="form-group">
+            <label>Fecha Solicitud *</label>
+            <input type="date" id="app-fecha-solicitud" class="form-control" required value="2026-07-28">
+          </div>
+          <div class="form-group">
+            <label>Fecha Compromiso *</label>
+            <input type="date" id="app-fecha-compromiso" class="form-control" required value="2026-08-15">
+          </div>
+          <div class="form-group">
+            <label>Estado *</label>
+            <select id="app-estado" class="form-control" required>
+              <option value="Activa">Activa</option>
+              <option value="En Evaluación Cliente">En Evaluación Cliente</option>
+              <option value="Completada a Tiempo">Completada a Tiempo</option>
+              <option value="Completada Tarde">Completada Tarde</option>
+              <option value="Cancelada">Cancelada</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="App.closeModal('modal-aplicacion')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Aplicación</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ASISTENCIA TÉCNICA -->
+  <div class="modal-overlay" id="modal-asistencia">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-asistencia-title">Crear / Editar Asistencia Técnica</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-asistencia')">&times;</button>
+      </div>
+      <form onsubmit="App.saveAsistenciaForm(event)">
+        <input type="hidden" id="ast-id">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Proyecto Vinculado (Opcional)</label>
+            <select id="ast-proyecto-id" class="form-control"></select>
+          </div>
+          <div class="form-group">
+            <label>Comercial Solicitante *</label>
+            <input type="text" id="ast-comercial" class="form-control" required value="Lic. Sofia Morales">
+          </div>
+          <div class="form-group">
+            <label>Investigador Asignado *</label>
+            <select id="ast-investigador-id" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label>Horas Invertidas *</label>
+            <input type="number" step="0.5" id="ast-horas" class="form-control" required value="4.0">
+          </div>
+          <div class="form-group full-width">
+            <label>Descripción del Requerimiento *</label>
+            <input type="text" id="ast-descripcion" class="form-control" required placeholder="Detalle de soporte brindado...">
+          </div>
+          <div class="form-group">
+            <label>Fecha Compromiso *</label>
+            <input type="date" id="ast-fecha-compromiso" class="form-control" required value="2026-08-05">
+          </div>
+          <div class="form-group">
+            <label>Estado *</label>
+            <select id="ast-estado" class="form-control" required>
+              <option value="Pendiente">Pendiente</option>
+              <option value="En Proceso">En Proceso</option>
+              <option value="Atendida">Atendida</option>
+              <option value="Cancelada">Cancelada</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="App.closeModal('modal-asistencia')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Asistencia</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TIME-TRACKING -->
+  <div class="modal-overlay" id="modal-timetracking">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-timetracking-title">Crear / Editar Registro de Tiempo</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-timetracking')">&times;</button>
+      </div>
+      <form onsubmit="App.saveTimeTrackingForm(event)">
+        <input type="hidden" id="tt-id">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Investigador / Rol *</label>
+            <select id="tt-investigador" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label>Fecha *</label>
+            <input type="date" id="tt-fecha" class="form-control" required value="2026-07-28">
+          </div>
+          <div class="form-group">
+            <label>Hora Inicio *</label>
+            <input type="time" id="tt-hora-inicio" class="form-control" required value="08:00">
+          </div>
+          <div class="form-group">
+            <label>Hora Fin *</label>
+            <input type="time" id="tt-hora-fin" class="form-control" required value="10:00">
+          </div>
+          <div class="form-group">
+            <label>Categoría PDR (5 Categorías) *</label>
+            <select id="tt-categoria" class="form-control" required>
+              <option value="ESTRATEGIA">ESTRATEGIA</option>
+              <option value="SOPORTE DE VALOR">SOPORTE DE VALOR (Incluye Asistencias a Comercial)</option>
+              <option value="CARGA OPERATIVA">CARGA OPERATIVA (Ensayos, Pilotos, Documentación)</option>
+              <option value="BIENESTAR Y CULTURA">BIENESTAR Y CULTURA</option>
+              <option value="TIEMPO NO LABORAL">TIEMPO NO LABORAL</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Subcategoría *</label>
+            <input type="text" id="tt-subcategoria" class="form-control" required placeholder="Ej: Asistencia Técnica, Ensayos">
+          </div>
+          <div class="form-group full-width">
+            <label>Descripción Actividad *</label>
+            <input type="text" id="tt-descripcion" class="form-control" required placeholder="Detalle técnico de la actividad...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="App.closeModal('modal-timetracking')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Registro</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CAPACITACIÓN -->
+  <div class="modal-overlay" id="modal-capacitacion">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-capacitacion-title">Crear / Editar Capacitación</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-capacitacion')">&times;</button>
+      </div>
+      <form onsubmit="App.saveCapacitacionForm(event)">
+        <input type="hidden" id="cap-id">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Investigador *</label>
+            <select id="cap-investigador-id" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label>Tipo *</label>
+            <select id="cap-tipo" class="form-control" required>
+              <option value="Dictada">Dictada</option>
+              <option value="Recibida">Recibida</option>
+            </select>
+          </div>
+          <div class="form-group full-width">
+            <label>Tema Formación Técnica *</label>
+            <input type="text" id="cap-tema" class="form-control" required placeholder="Ej: Seminario de Caracterización Reológica">
+          </div>
+          <div class="form-group">
+            <label>Fecha *</label>
+            <input type="date" id="cap-fecha" class="form-control" required value="2026-07-28">
+          </div>
+          <div class="form-group">
+            <label>Horas Acumuladas *</label>
+            <input type="number" step="0.5" id="cap-horas" class="form-control" required value="4.0">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="App.closeModal('modal-capacitacion')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Capacitación</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: HOMOLOGACIÓN -->
+  <div class="modal-overlay" id="modal-homologacion">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-homologacion-title">Crear / Editar Homologación</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-homologacion')">&times;</button>
+      </div>
+      <form onsubmit="App.saveHomologacionForm(event)">
+        <input type="hidden" id="hom-id">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Materia Prima *</label>
+            <input type="text" id="hom-materia" class="form-control" required placeholder="Ej: Maltodextrina DE 15">
+          </div>
+          <div class="form-group">
+            <label>Proveedor *</label>
+            <input type="text" id="hom-proveedor" class="form-control" required placeholder="Ej: Ingredion">
+          </div>
+          <div class="form-group">
+            <label>Centro Costo *</label>
+            <select id="hom-cc" class="form-control" required>
+              <option value="144">144 (Homologación)</option>
+              <option value="551">551 (Aplicaciones)</option>
+              <option value="561">561 (Desarrollos)</option>
+              <option value="571">571 (Investigación)</option>
+              <option value="584">584 (Proyecto Orquídeas)</option>
+              <option value="591">591 (Nutrición Avanzada)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Fecha Compromiso *</label>
+            <input type="date" id="hom-fecha-compromiso" class="form-control" required value="2026-08-20">
+          </div>
+          <div class="form-group full-width">
+            <label>Estado Prueba *</label>
+            <select id="hom-estado" class="form-control" required>
+              <option value="En Evaluación/Prueba">En Evaluación/Prueba</option>
+              <option value="Aprobada">Aprobada</option>
+              <option value="Rechazada">Rechazada</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="App.closeModal('modal-homologacion')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Homologación</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EFICIENCIA -->
+  <div class="modal-overlay" id="modal-eficiencia">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-eficiencia-title">Crear / Editar Proyecto Eficiencia</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-eficiencia')">&times;</button>
+      </div>
+      <form onsubmit="App.saveEficienciaForm(event)">
+        <input type="hidden" id="efi-id">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label>Nombre Optimización *</label>
+            <input type="text" id="efi-nombre" class="form-control" required placeholder="Ej: Reducción de tiempo de esterilización">
+          </div>
+          <div class="form-group">
+            <label>Centro Costo *</label>
+            <select id="efi-cc" class="form-control" required>
+              <option value="551">551 (Aplicaciones)</option>
+              <option value="561">561 (Desarrollos)</option>
+              <option value="571">571 (Investigación)</option>
+              <option value="584">584 (Proyecto Orquídeas)</option>
+              <option value="591">591 (Nutrición Avanzada)</option>
+              <option value="144">144 (Homologación)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Unidad Medida *</label>
+            <input type="text" id="efi-unidad" class="form-control" required placeholder="Ej: minutos/lote, %">
+          </div>
+          <div class="form-group">
+            <label>Valor Actual *</label>
+            <input type="number" step="0.1" id="efi-valor-actual" class="form-control" required value="50.0">
+          </div>
+          <div class="form-group">
+            <label>Valor Nuevo (Optimizado) *</label>
+            <input type="number" step="0.1" id="efi-valor-nuevo" class="form-control" required value="75.0">
+          </div>
+          <div class="form-group full-width">
+            <label>Fecha Compromiso *</label>
+            <input type="date" id="efi-fecha-compromiso" class="form-control" required value="2026-08-30">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="App.closeModal('modal-eficiencia')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Eficiencia</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: PRESUPUESTO -->
+  <div class="modal-overlay" id="modal-presupuesto">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-presupuesto-title">Configurar Presupuesto por CC</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-presupuesto')">&times;</button>
+      </div>
+      <form onsubmit="App.savePresupuestoForm(event)">
+        <input type="hidden" id="pre-id">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Centro de Costo *</label>
+            <select id="pre-cc" class="form-control" required>
+              <option value="551">551 (Aplicaciones)</option>
+              <option value="561">561 (Desarrollos)</option>
+              <option value="571">571 (Investigación)</option>
+              <option value="584">584 (Proyecto Orquídeas)</option>
+              <option value="591">591 (Nutrición Avanzada)</option>
+              <option value="144">144 (Homologación)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Año *</label>
+            <input type="number" id="pre-anio" class="form-control" required value="2026">
+          </div>
+          <div class="form-group">
+            <label>Presupuesto Asignado ($) *</label>
+            <input type="number" id="pre-asignado" class="form-control" required value="200000000">
+          </div>
+          <div class="form-group">
+            <label>Gasto Real Ejecutado ($) *</label>
+            <input type="number" id="pre-gasto" class="form-control" required value="120000000">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="App.closeModal('modal-presupuesto')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Presupuesto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JS Scripts -->
+  <script src="db.js"></script>
+  <script src="kpis.js"></script>
+  <script src="reports.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
