@@ -2,8 +2,5 @@
   "name": "sistema-idd-bitacoras",
   "version": "1.0.0",
   "private": true,
-  "description": "Sistema Integrado de Gestión IDD, Bitácoras, Capacidad e Indicadores PDR V2",
-  "scripts": {
-    "start": "node server.js"
-  }
+  "description": "Sistema Integrado de Gestión IDD"
 }
