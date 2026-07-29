@@ -449,10 +449,33 @@ const initialDatabase = {
   ]
 };
 
+// Configuración de Firebase proporcionada por el usuario
+const firebaseConfig = {
+  apiKey: "AIzaSyDSbcwM0_-PhBaFxHLB656pqjPgHZzIq8E",
+  authDomain: "bitacoras-84f84.firebaseapp.com",
+  projectId: "bitacoras-84f84",
+  storageBucket: "bitacoras-84f84.firebasestorage.app",
+  messagingSenderId: "72473326360",
+  appId: "1:72473326360:web:2e8c9a417eff6e1142646d",
+  measurementId: "G-NNT56M4PKK"
+};
+
+// Inicializar Firebase
+if (window.firebase) {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    firebase.analytics();
+    console.log("Firebase initialized successfully!");
+  } catch (e) {
+    console.warn("Error initializing Firebase:", e);
+  }
+}
+
 const DB = {
   data: null,
 
-  init() {
+  async init() {
+    // 1. Cargar local primero de forma instantánea (Offline-first)
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
@@ -461,7 +484,6 @@ const DB = {
         if (!this.data.modulos) this.data.modulos = JSON.parse(JSON.stringify(initialDatabase.modulos));
         if (!this.data.custom_module_notes) this.data.custom_module_notes = [];
       } catch (e) {
-        console.error('Error al leer LocalStorage, reseteando BD:', e);
         this.data = JSON.parse(JSON.stringify(initialDatabase));
         this.save();
       }
@@ -469,10 +491,51 @@ const DB = {
       this.data = JSON.parse(JSON.stringify(initialDatabase));
       this.save();
     }
+
+    // 2. Intentar descargar la versión en la nube (Firestore) en segundo plano
+    if (window.firebase) {
+      try {
+        const firestore = firebase.firestore();
+        const docRef = firestore.collection('bitacoras').doc('state');
+        const docSnap = await docRef.get();
+        
+        if (docSnap.exists) {
+          console.log("Cargado estado sincronizado desde Firebase Firestore");
+          const cloudData = docSnap.data();
+          
+          // Combinar o usar el estado en la nube como fuente de verdad
+          this.data = cloudData;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
+          
+          // Forzar refresco de UI
+          if (window.App && typeof App.renderAll === 'function') {
+            App.renderAll();
+          }
+        } else {
+          // Si no existe, subir los datos locales iniciales
+          console.log("Sembrando base de datos inicial en Firebase Firestore...");
+          await docRef.set(this.data);
+        }
+      } catch (err) {
+        console.warn("Trabajando en modo Local/Offline. Firebase Firestore no disponible:", err);
+      }
+    }
   },
 
   save() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
+
+    // Sincronizar asíncronamente con Firebase Firestore
+    if (window.firebase) {
+      try {
+        const firestore = firebase.firestore();
+        firestore.collection('bitacoras').doc('state').set(this.data)
+          .then(() => console.log("Firestore sincronizado con éxito"))
+          .catch(err => console.error("Error sincronizando con Firestore:", err));
+      } catch (e) {
+        console.warn("Fallo al escribir en Firebase:", e);
+      }
+    }
   },
 
   reset() {
