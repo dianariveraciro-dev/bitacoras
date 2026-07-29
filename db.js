@@ -432,6 +432,20 @@ const initialDatabase = {
     { id: 804, centro_costo: '584', nombre: '584 (Proyecto Orquídeas)', anio: 2026, asignado: 850000000, gasto_real: 510000000 },
     { id: 805, centro_costo: '591', nombre: '591 (Nutrición Avanzada)', anio: 2026, asignado: 320000000, gasto_real: 215000000 },
     { id: 806, centro_costo: '144', nombre: '144 (Homologación)', anio: 2026, asignado: 95000000, gasto_real: 68000000 }
+  ],
+
+  modulos: [
+    { id: 'mod-proyectos', nombre: '1. IDD / Proyectos', descripcion: 'Funnel, Cierre & Ventas', icon: '🚀', system: true },
+    { id: 'mod-aplicaciones', nombre: '2. Aplicaciones', descripcion: 'Solicitudes & Eval. Cliente', icon: '🧪', system: true },
+    { id: 'mod-asistencia', nombre: '3. Asistencia Técnica', descripcion: 'Soporte Comercial & Tiempos', icon: '🎧', system: true },
+    { id: 'mod-capacidad', nombre: '4. Capacidad Proceso', descripcion: 'Time-Tracking Hora a Hora', icon: '⏱️', system: true },
+    { id: 'mod-capacitaciones', nombre: '5. Capacitaciones', descripcion: 'Formación Técnica por Rol', icon: '📚', system: true },
+    { id: 'mod-homologaciones', nombre: '6. Homologación & Presupuesto', descripcion: 'Eficiencias & Centros Costo', icon: '📊', system: true },
+    { id: 'mod-catalogos', nombre: '7. Catálogos System', descripcion: 'Investigadores, Roles & Líneas', icon: '⚙️', system: true }
+  ],
+
+  custom_module_notes: [
+    { id: 1, modulo_id: 'custom-prod', fecha: '2026-07-28', titulo: 'Recordatorio producción', contenido: 'Revisar lote piloto con el Ing. Carlos Rodríguez el viernes.' }
   ]
 };
 
@@ -444,6 +458,8 @@ const DB = {
       try {
         this.data = JSON.parse(stored);
         if (!this.data.lineas) this.data.lineas = JSON.parse(JSON.stringify(initialDatabase.lineas));
+        if (!this.data.modulos) this.data.modulos = JSON.parse(JSON.stringify(initialDatabase.modulos));
+        if (!this.data.custom_module_notes) this.data.custom_module_notes = [];
       } catch (e) {
         console.error('Error al leer LocalStorage, reseteando BD:', e);
         this.data = JSON.parse(JSON.stringify(initialDatabase));
@@ -768,6 +784,65 @@ const DB = {
   deletePresupuesto(id) {
     this.data.presupuesto = this.data.presupuesto.filter(p => p.id !== id);
     this.save();
+  },
+
+  // ---------------------------------------------------------------------------
+  // CRUD MÓDULOS DEL SISTEMA
+  // ---------------------------------------------------------------------------
+  getModulos() {
+    if (!this.data.modulos) {
+      this.data.modulos = JSON.parse(JSON.stringify(initialDatabase.modulos));
+    }
+    return this.data.modulos;
+  },
+
+  addModulo(modulo) {
+    const nextId = 'custom-' + Math.random().toString(36).substr(2, 9);
+    const newMod = { id: nextId, system: false, ...modulo };
+    this.data.modulos.push(newMod);
+    this.save();
+    return newMod;
+  },
+
+  updateModulo(id, updateData) {
+    const m = this.data.modulos.find(mod => mod.id === id);
+    if (!m) return null;
+    Object.assign(m, updateData);
+    this.save();
+    return m;
+  },
+
+  deleteModulo(id) {
+    this.data.modulos = this.data.modulos.filter(mod => mod.id !== id);
+    // Eliminar notas vinculadas
+    if (this.data.custom_module_notes) {
+      this.data.custom_module_notes = this.data.custom_module_notes.filter(n => n.modulo_id !== id);
+    }
+    this.save();
+  },
+
+  // ---------------------------------------------------------------------------
+  // CRUD NOTAS DE MÓDULOS PERSONALIZADOS
+  // ---------------------------------------------------------------------------
+  getCustomNotes(moduloId) {
+    if (!this.data.custom_module_notes) this.data.custom_module_notes = [];
+    return this.data.custom_module_notes.filter(n => n.modulo_id === moduloId);
+  },
+
+  addCustomNote(note) {
+    if (!this.data.custom_module_notes) this.data.custom_module_notes = [];
+    const nextId = Math.max(...this.data.custom_module_notes.map(n => n.id), 0) + 1;
+    const newNote = { id: nextId, ...note };
+    this.data.custom_module_notes.push(newNote);
+    this.save();
+    return newNote;
+  },
+
+  deleteCustomNote(id) {
+    if (this.data.custom_module_notes) {
+      this.data.custom_module_notes = this.data.custom_module_notes.filter(n => n.id !== id);
+      this.save();
+    }
   }
 };
 

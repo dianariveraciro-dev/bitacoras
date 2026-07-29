@@ -8,6 +8,7 @@ const App = {
 
   init() {
     this.populateCatalogDropdowns();
+    this.renderNavigation();
     this.renderAll();
     this.loadSQLSchemaText();
   },
@@ -46,14 +47,51 @@ const App = {
     }
   },
 
+  renderNavigation() {
+    const navContainer = document.getElementById('main-nav-container');
+    if (!navContainer) return;
+    const modulos = DB.getModulos();
+    
+    let html = modulos.map(m => `
+      <div class="nav-module-card ${this.activeModuleId === m.id ? 'active' : ''}" onclick="App.switchModule('${m.id}', this)">
+        <div class="nav-module-icon">${m.icon}</div>
+        <div class="nav-module-text">
+          <h3>${m.nombre}</h3>
+          <p>${m.descripcion}</p>
+        </div>
+      </div>
+    `).join('');
+
+    html += `
+      <div class="nav-module-card ${this.activeModuleId === 'mod-db-schema' ? 'active' : ''}" onclick="App.switchModule('mod-db-schema', this)">
+        <div class="nav-module-icon">🗄️</div>
+        <div class="nav-module-text">
+          <h3>Arquitectura DB</h3>
+          <p>Esquema SQL Relacional</p>
+        </div>
+      </div>
+    `;
+
+    navContainer.innerHTML = html;
+  },
+
   switchModule(moduleId, cardElement) {
     this.activeModuleId = moduleId;
     
     document.querySelectorAll('.nav-module-card').forEach(card => card.classList.remove('active'));
-    if (cardElement) cardElement.classList.add('active');
+    if (cardElement) {
+      cardElement.classList.add('active');
+    } else {
+      this.renderNavigation();
+    }
 
     document.querySelectorAll('.module-section').forEach(sec => sec.style.display = 'none');
-    const targetSec = document.getElementById(moduleId);
+    
+    let targetSec = document.getElementById(moduleId);
+    if (!targetSec && moduleId.startsWith('custom-')) {
+      targetSec = document.getElementById('mod-generic-custom');
+    }
+    
     if (targetSec) targetSec.style.display = 'block';
 
     this.renderCurrentModule();
@@ -75,6 +113,7 @@ const App = {
 
   renderAll() {
     this.populateCatalogDropdowns();
+    this.renderNavigation();
     const filters = this.getFilters();
     const proyectos = DB.getProjects(filters);
 
@@ -85,6 +124,11 @@ const App = {
   renderCurrentModule() {
     const filters = this.getFilters();
     const proyectos = DB.getProjects(filters);
+
+    if (this.activeModuleId.startsWith('custom-')) {
+      this.renderCustomModuleWorkspace();
+      return;
+    }
 
     switch (this.activeModuleId) {
       case 'mod-proyectos':
@@ -884,6 +928,38 @@ const App = {
         </td>
       </tr>
     `).join('');
+
+    const modulos = DB.getModulos();
+    document.getElementById('tbl-modulos-body').innerHTML = modulos.map(m => `
+      <tr>
+        <td><span style="font-size:20px;">${m.icon}</span></td>
+        <td><strong>${m.nombre}</strong></td>
+        <td>${m.descripcion}</td>
+        <td><span class="badge-etapa">${m.system ? 'Sistema (Fijo)' : 'Personalizado'}</span></td>
+        <td>
+          <div class="action-buttons">
+            ${m.system ? `
+              <button class="btn-edit" onclick="App.openModalModulo('${m.id}')">✏️ Editar</button>
+            ` : `
+              <button class="btn-edit" onclick="App.openModalModulo('${m.id}')">✏️ Editar</button>
+              <button class="btn-danger" onclick="App.deleteModulo('${m.id}')">🗑️</button>
+            `}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+    
+    // Añadir botón para crear nuevos módulos arriba de la tabla si no está ya
+    const container = document.getElementById('tbl-modulos-body').closest('.table-responsive');
+    if (container && !document.getElementById('btn-add-new-module-trigger')) {
+      const btn = document.createElement('button');
+      btn.id = 'btn-add-new-module-trigger';
+      btn.className = 'btn-primary';
+      btn.style.marginBottom = '12px';
+      btn.innerText = '+ Crear Nuevo Módulo';
+      btn.onclick = () => App.openModalModulo();
+      container.parentNode.insertBefore(btn, container);
+    }
   },
 
   openModalUsuario(id = null) {
@@ -1012,6 +1088,154 @@ const App = {
     a.download = 'schema.sql';
     a.click();
     URL.revokeObjectURL(url);
+  },
+
+  // ---------------------------------------------------------------------------
+  // INTERFAZ DE MÓDULO PERSONALIZADO GENÉRICO
+  // ---------------------------------------------------------------------------
+  renderCustomModuleWorkspace() {
+    const moduleId = this.activeModuleId;
+    const mod = DB.getModulos().find(m => m.id === moduleId);
+    if (!mod) return;
+
+    document.getElementById('custom-mod-title').innerText = `${mod.icon} Módulo: ${mod.nombre}`;
+    document.getElementById('custom-mod-desc').innerText = mod.descripcion;
+
+    const notes = DB.getCustomNotes(moduleId);
+    const tbody = document.getElementById('tbl-custom-notes-body');
+
+    if (notes.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">No hay registros en este módulo personalizado. Presiona "+ Agregar Nota / Registro" para empezar.</td></tr>';
+    } else {
+      tbody.innerHTML = notes.map(n => `
+        <tr>
+          <td><strong>${n.fecha}</strong></td>
+          <td><div style="font-weight:600; color:#fff;">${n.titulo}</div></td>
+          <td>${n.contenido}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn-edit" onclick="App.openModalCustomNote(${n.id})">✏️ Editar</button>
+              <button class="btn-danger" onclick="App.deleteCustomNote(${n.id})">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('btn-custom-export-excel').onclick = () => {
+      const data = notes.map(n => ({ 'Fecha': n.fecha, 'Título': n.titulo, 'Detalles': n.contenido }));
+      ReportEngine.exportToExcel(data, `Reporte_${mod.nombre.replace(/\s+/g, '_')}`, 'Registros');
+    };
+    
+    document.getElementById('btn-custom-export-pdf').onclick = () => {
+      const headers = ['Fecha', 'Título del Registro', 'Detalles'];
+      const rows = notes.map(n => [n.fecha, n.titulo, n.contenido]);
+      ReportEngine.exportToPDF(`Reporte de Módulo: ${mod.nombre}`, headers, rows, `Reporte_${mod.nombre.replace(/\s+/g, '_')}`);
+    };
+  },
+
+  openModalCustomNote(id = null) {
+    document.getElementById('cn-id').value = id || '';
+    document.getElementById('cn-modulo-id').value = this.activeModuleId;
+    
+    if (id) {
+      const notes = DB.getCustomNotes(this.activeModuleId);
+      const note = notes.find(n => n.id === id);
+      if (!note) return;
+      document.getElementById('modal-custom-note-title').innerText = 'Editar Registro';
+      document.getElementById('cn-fecha').value = note.fecha;
+      document.getElementById('cn-titulo').value = note.titulo;
+      document.getElementById('cn-contenido').value = note.contenido;
+    } else {
+      document.getElementById('modal-custom-note-title').innerText = 'Agregar Registro';
+      document.getElementById('cn-fecha').value = new Date().toISOString().substring(0, 10);
+      document.getElementById('cn-titulo').value = '';
+      document.getElementById('cn-contenido').value = '';
+    }
+    this.openModal('modal-custom-note');
+  },
+
+  saveCustomNoteForm(e) {
+    e.preventDefault();
+    const id = parseInt(document.getElementById('cn-id').value);
+    const moduloId = document.getElementById('cn-modulo-id').value;
+    const data = {
+      modulo_id: moduloId,
+      fecha: document.getElementById('cn-fecha').value,
+      titulo: document.getElementById('cn-titulo').value,
+      contenido: document.getElementById('cn-contenido').value
+    };
+
+    if (id) {
+      const notes = DB.data.custom_module_notes;
+      const index = notes.findIndex(n => n.id === id);
+      if (index !== -1) {
+        Object.assign(notes[index], data);
+        DB.save();
+      }
+    } else {
+      DB.addCustomNote(data);
+    }
+
+    this.closeModal('modal-custom-note');
+    this.renderAll();
+  },
+
+  deleteCustomNote(id) {
+    if (confirm('¿Eliminar este registro?')) {
+      DB.deleteCustomNote(id);
+      this.renderAll();
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  // CRUD MÓDULOS (CREAR / EDITAR / ELIMINAR)
+  // ---------------------------------------------------------------------------
+  openModalModulo(id = null) {
+    document.getElementById('mod-id').value = id || '';
+    if (id) {
+      const mod = DB.getModulos().find(m => m.id === id);
+      if (!mod) return;
+      document.getElementById('modal-modulo-title').innerText = 'Editar Módulo';
+      document.getElementById('mod-icon').value = mod.icon;
+      document.getElementById('mod-nombre').value = mod.nombre;
+      document.getElementById('mod-descripcion').value = mod.descripcion;
+    } else {
+      document.getElementById('modal-modulo-title').innerText = 'Crear Nuevo Módulo';
+      document.getElementById('mod-icon').value = '📂';
+      document.getElementById('mod-nombre').value = '';
+      document.getElementById('mod-descripcion').value = '';
+    }
+    this.openModal('modal-modulo');
+  },
+
+  saveModuloForm(e) {
+    e.preventDefault();
+    const id = document.getElementById('mod-id').value;
+    const data = {
+      icon: document.getElementById('mod-icon').value,
+      nombre: document.getElementById('mod-nombre').value,
+      descripcion: document.getElementById('mod-descripcion').value
+    };
+
+    if (id) {
+      DB.updateModulo(id, data);
+    } else {
+      DB.addModulo(data);
+    }
+
+    this.closeModal('modal-modulo');
+    this.renderAll();
+  },
+
+  deleteModulo(id) {
+    if (confirm('¿Estás seguro de eliminar este módulo? Se borrarán todos sus registros asociados.')) {
+      DB.deleteModulo(id);
+      if (this.activeModuleId === id) {
+        this.activeModuleId = 'mod-proyectos';
+      }
+      this.renderAll();
+    }
   }
 };
 

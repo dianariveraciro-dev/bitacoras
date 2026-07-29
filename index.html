@@ -103,71 +103,7 @@
     </section>
 
     <!-- Menú de Navegación Directa a los Módulos Gerenciales -->
-    <nav class="modules-nav-container">
-      <div class="nav-module-card active" onclick="App.switchModule('mod-proyectos', this)">
-        <div class="nav-module-icon">🚀</div>
-        <div class="nav-module-text">
-          <h3>1. IDD / Proyectos</h3>
-          <p>Funnel, Cierre & Ventas</p>
-        </div>
-      </div>
-
-      <div class="nav-module-card" onclick="App.switchModule('mod-aplicaciones', this)">
-        <div class="nav-module-icon">🧪</div>
-        <div class="nav-module-text">
-          <h3>2. Aplicaciones</h3>
-          <p>Solicitudes & Eval. Cliente</p>
-        </div>
-      </div>
-
-      <div class="nav-module-card" onclick="App.switchModule('mod-asistencia', this)">
-        <div class="nav-module-icon">🎧</div>
-        <div class="nav-module-text">
-          <h3>3. Asistencia Técnica</h3>
-          <p>Soporte Comercial & Tiempos</p>
-        </div>
-      </div>
-
-      <div class="nav-module-card" onclick="App.switchModule('mod-capacidad', this)">
-        <div class="nav-module-icon">⏱️</div>
-        <div class="nav-module-text">
-          <h3>4. Capacidad Proceso</h3>
-          <p>Time-Tracking Hora a Hora</p>
-        </div>
-      </div>
-
-      <div class="nav-module-card" onclick="App.switchModule('mod-capacitaciones', this)">
-        <div class="nav-module-icon">📚</div>
-        <div class="nav-module-text">
-          <h3>5. Capacitaciones</h3>
-          <p>Formación Técnica por Rol</p>
-        </div>
-      </div>
-
-      <div class="nav-module-card" onclick="App.switchModule('mod-homologaciones', this)">
-        <div class="nav-module-icon">📊</div>
-        <div class="nav-module-text">
-          <h3>6. Homologación & Presupuesto</h3>
-          <p>Eficiencias & Centros Costo</p>
-        </div>
-      </div>
-
-      <div class="nav-module-card" onclick="App.switchModule('mod-catalogos', this)">
-        <div class="nav-module-icon">⚙️</div>
-        <div class="nav-module-text">
-          <h3>7. Catálogos System</h3>
-          <p>Investigadores, Roles & Líneas</p>
-        </div>
-      </div>
-
-      <div class="nav-module-card" onclick="App.switchModule('mod-db-schema', this)">
-        <div class="nav-module-icon">🗄️</div>
-        <div class="nav-module-text">
-          <h3>Arquitectura DB</h3>
-          <p>Esquema SQL Relacional</p>
-        </div>
-      </div>
-    </nav>
+    <nav class="modules-nav-container" id="main-nav-container"></nav>
 
     <!-- Panel de Contenido Principal del Módulo -->
     <main class="module-content-panel">
@@ -441,6 +377,49 @@
               </tr>
             </thead>
             <tbody id="tbl-lineas-body"></tbody>
+          </table>
+        </div>
+
+        <h3 style="font-size: 15px; margin-top: 24px; margin-bottom: 12px; color: #93c5fd;">3. Gestión de Módulos del Sistema (Crear / Eliminar)</h3>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Icono</th>
+                <th>Nombre del Módulo</th>
+                <th>Descripción</th>
+                <th>Tipo</th>
+                <th>Acciones (CRUD)</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-modulos-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Módulo Personalizado Genérico (Para módulos creados dinámicamente) -->
+      <section id="mod-generic-custom" class="module-section" style="display: none;">
+        <div class="panel-header">
+          <h2 id="custom-mod-title">Módulo Personalizado</h2>
+          <div class="action-buttons">
+            <button class="btn-secondary" id="btn-custom-export-excel">📊 Exportar Excel</button>
+            <button class="btn-secondary" id="btn-custom-export-pdf">📄 Exportar PDF</button>
+            <button class="btn-primary" onclick="App.openModalCustomNote()">+ Agregar Nota / Registro</button>
+          </div>
+        </div>
+        <p id="custom-mod-desc" style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;"></p>
+        
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Título del Registro</th>
+                <th>Contenido / Detalles del Registro</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-custom-notes-body"></tbody>
           </table>
         </div>
       </section>
@@ -1054,6 +1033,69 @@
         <div class="modal-footer">
           <button type="button" class="btn-secondary" onclick="App.closeModal('modal-presupuesto')">Cancelar</button>
           <button type="submit" class="btn-primary">Guardar Presupuesto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CREAR / EDITAR MÓDULO -->
+  <div class="modal-overlay" id="modal-modulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-modulo-title">Crear / Editar Módulo del Sistema</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-modulo')">&times;</button>
+      </div>
+      <form onsubmit="App.saveModuloForm(event)">
+        <input type="hidden" id="mod-id">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Icono / Emoji *</label>
+            <input type="text" id="mod-icon" class="form-control" required placeholder="Ej: 🚀, 🧪, 📈, 🎨" maxlength="2">
+          </div>
+          <div class="form-group">
+            <label>Nombre del Módulo *</label>
+            <input type="text" id="mod-nombre" class="form-control" required placeholder="Ej: Gestión de Producción">
+          </div>
+          <div class="form-group full-width">
+            <label>Descripción Corta *</label>
+            <input type="text" id="mod-descripcion" class="form-control" required placeholder="Ej: Bitácora de seguimiento de planta piloto...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="App.closeModal('modal-modulo')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Módulo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CREAR / EDITAR NOTA / REGISTRO PERSONALIZADO -->
+  <div class="modal-overlay" id="modal-custom-note">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-custom-note-title">Agregar Registro al Módulo</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-custom-note')">&times;</button>
+      </div>
+      <form onsubmit="App.saveCustomNoteForm(event)">
+        <input type="hidden" id="cn-id">
+        <input type="hidden" id="cn-modulo-id">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Fecha *</label>
+            <input type="date" id="cn-fecha" class="form-control" required value="2026-07-28">
+          </div>
+          <div class="form-group">
+            <label>Título del Registro *</label>
+            <input type="text" id="cn-titulo" class="form-control" required placeholder="Ej: Avance de pruebas">
+          </div>
+          <div class="form-group full-width">
+            <label>Contenido / Detalles del Registro *</label>
+            <textarea id="cn-contenido" class="form-control" rows="4" required placeholder="Escribe los detalles aquí..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="App.closeModal('modal-custom-note')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Registro</button>
         </div>
       </form>
     </div>
